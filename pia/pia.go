@@ -64,6 +64,7 @@ type PIAClient struct {
 	// tokenURL overrides productionTokenURL. Empty means use productionTokenURL.
 	// This field exists solely to allow unit tests to point GetToken() at a local httptest server.
 	tokenURL string
+	cnServer string
 }
 
 type piaServerList struct {
@@ -100,13 +101,14 @@ type Server struct {
 // NewPIAClient creates a new PIA client for with the list of servers populated.
 // caCertPath may be empty, in which case the CA cert is downloaded from PIA's GitHub
 // repository and verified against the piaCACertFingerprintSHA256 constant.
-func NewPIAClient(username, password, region, caCertPath string, verbose bool) (*PIAClient, error) {
+func NewPIAClient(username, password, region, caCertPath, cnServer string, verbose bool) (*PIAClient, error) {
 	piaClient := PIAClient{
 		username:   username,
 		password:   password,
 		region:     region,
 		verbose:    verbose,
 		caCertPath: caCertPath,
+		cnServer:   cnServer,
 	}
 
 	// Get list of servers
@@ -231,6 +233,18 @@ func (p *PIAClient) getWireguardServerForRegion() Server {
 	servers := p.wireguardServers[Region(p.region)]
 	if len(servers) == 0 {
 		log.Fatalf("No Wireguard servers available for region: %s", p.region)
+	}
+	if p.cnServer != "" {
+		for _, s := range servers {
+			if s.Cn == p.cnServer {
+				return s
+			}
+		}
+		cns := make([]string, 0, len(servers))
+		for _, s := range servers {
+			cns = append(cns, s.Cn)
+		}
+		log.Fatalf("server CN %q not found in region %s (available: %v)", p.cnServer, p.region, strings.Join(cns, ","))
 	}
 	return servers[0]
 }

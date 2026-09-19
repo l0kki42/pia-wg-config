@@ -61,6 +61,11 @@ func main() {
 				Aliases: []string{"c"},
 				Usage:   "Path to a locally-trusted PIA ca cert pem `FILE`. If omitted, the cert is fetched from GitHub and verified against a pinned SHA-256 fingerprint.",
 			},
+			&cli.StringFlag{
+				Name:    "server-cn",
+				Aliases: []string{"cn"},
+				Usage:   "Pin registration to the server with this common name (see 'regions' output)",
+			},
 		},
 	}
 
@@ -111,6 +116,7 @@ func defaultAction(c *cli.Context) error {
 	verbose := c.Bool("verbose")
 	region := c.String("region")
 	caCertPath := c.String("ca-cert")
+	serverCn := c.String("server-cn")
 
 	// create pia client
 	if verbose {
@@ -120,7 +126,7 @@ func defaultAction(c *cli.Context) error {
 			log.Printf("Region: %s (default; use --region to override)", region)
 		}
 	}
-	piaClient, err := pia.NewPIAClient(username, password, region, caCertPath, verbose)
+	piaClient, err := pia.NewPIAClient(username, password, region, caCertPath, serverCn, verbose)
 	if err != nil {
 		if verbose {
 			log.Printf("Failed to create PIA client: %v", err)
@@ -183,7 +189,7 @@ func listRegions(c *cli.Context) error {
 	fmt.Println("Fetching available regions from PIA...")
 
 	// Create a dummy client just to get the server list (no credentials or CA cert required)
-	piaClient, err := pia.NewPIAClient("", "", "us_california", "", false)
+	piaClient, err := pia.NewPIAClient("", "", "us_california", "", "", false)
 	if err != nil {
 		return fmt.Errorf("failed to fetch regions: %v", err)
 	}
