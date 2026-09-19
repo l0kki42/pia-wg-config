@@ -26,5 +26,5 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            l0kki42/pia-wg-config:latest
-            l0kki42/pia-wg-config:${{ github.sha }}
+            ${{ vars.DOCKER_REPO }}/pia-wg-config:latest
+            ${{ vars.DOCKER_REPO }}/pia-wg-config:${{ github.sha }}
