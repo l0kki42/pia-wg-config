@@ -101,14 +101,14 @@ type Server struct {
 // NewPIAClient creates a new PIA client for with the list of servers populated.
 // caCertPath may be empty, in which case the CA cert is downloaded from PIA's GitHub
 // repository and verified against the piaCACertFingerprintSHA256 constant.
-func NewPIAClient(username, password, region, caCertPath, cnServer string, verbose bool) (*PIAClient, error) {
+func NewPIAClient(username, password, region, caCertPath, serverCn string, verbose bool) (*PIAClient, error) {
 	piaClient := PIAClient{
 		username:   username,
 		password:   password,
 		region:     region,
 		verbose:    verbose,
 		caCertPath: caCertPath,
-		serverCn:   cnServer,
+		serverCn:   serverCn,
 	}
 
 	// Get list of servers
