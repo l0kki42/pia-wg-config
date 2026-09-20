@@ -10,13 +10,18 @@ func (p *PIAClientMock) GetToken() (string, error) {
 	return "", nil
 }
 
-func (p *PIAClientMock) AddKey(token, publickey string) (AddKeyResult, error) {
+func (p *PIAClientMock) AddKey(token, publickey string) (AddKeyResult, Server, error) {
 	return AddKeyResult{
-		ServerIP:   "1.2.3.4",
-		DNSServers: []string{"1.1.1.1"},
-		PeerIP:     "4.5.6.7",
-		ServerKey:  publickey,
-	}, nil
+			ServerIP:   "1.2.3.4",
+			DNSServers: []string{"1.1.1.1"},
+			PeerIP:     "4.5.6.7",
+			ServerKey:  publickey,
+		},
+		Server{
+			Cn: "TestServer",
+			IP: "1.2.3.4",
+		},
+		nil
 }
 
 func TestPIAWgGenerator_Generate(t *testing.T) {
@@ -58,7 +63,7 @@ PersistentKeepalive = 25`,
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := NewPIAWgGenerator(tt.fields.pia, tt.fields.config)
-			got, err := p.Generate()
+			got, _, err := p.Generate()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("PIAWgGenerator.Generate() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -64,7 +64,12 @@ func main() {
 			&cli.StringFlag{
 				Name:    "server-cn",
 				Aliases: []string{"cn"},
-				Usage:   "Pin registration to the server with this common name (see 'regions' output)",
+				Usage:   "Pin registration to the server with this common name",
+			},
+			&cli.StringFlag{
+				Name:    "server-name-file",
+				Aliases: []string{"f"},
+				Usage:   "Write CN server name into a file",
 			},
 		},
 	}
@@ -117,6 +122,7 @@ func defaultAction(c *cli.Context) error {
 	region := c.String("region")
 	caCertPath := c.String("ca-cert")
 	serverCn := c.String("server-cn")
+	serverFile := c.String("server-name-file")
 
 	// create pia client
 	if verbose {
@@ -125,7 +131,12 @@ func defaultAction(c *cli.Context) error {
 		} else {
 			log.Printf("Region: %s (default; use --region to override)", region)
 		}
+
+		if c.IsSet("server-cn") {
+			log.Printf("Selected CN Server: %s", serverCn)
+		}
 	}
+
 	piaClient, err := pia.NewPIAClient(username, password, region, caCertPath, serverCn, verbose)
 	if err != nil {
 		if verbose {
@@ -151,7 +162,7 @@ func defaultAction(c *cli.Context) error {
 	if verbose {
 		log.Print("Generating wireguard config")
 	}
-	config, err := wgConfigGenerator.Generate()
+	config, server, err := wgConfigGenerator.Generate()
 	if err != nil {
 		if verbose {
 			log.Printf("Failed to generate config: %v", err)
@@ -177,6 +188,14 @@ func defaultAction(c *cli.Context) error {
 		}
 		fmt.Printf("✓ Wireguard config generated successfully: %s\n", outfile)
 		fmt.Printf("You can now connect using: sudo wg-quick up %s\n", outfile)
+
+		if serverFile != "" {
+			err = os.WriteFile(serverFile, []byte(server.Cn), 0644)
+			if err != nil {
+				return cli.Exit(fmt.Sprintf("Error: Failed to write CN server name to file '%s': %v", serverFile, err), 1)
+			}
+			fmt.Printf("✓ CN Server name written to file successfully: %s\n", serverFile)
+		}
 	} else {
 		// print config to stdout
 		fmt.Println(config)

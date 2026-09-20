@@ -45,7 +45,7 @@ const productionTokenURL = "https://www.privateinternetaccess.com/api/client/v2/
 
 type PIAWgClient interface {
 	GetToken() (string, error)
-	AddKey(token, publickey string) (AddKeyResult, error)
+	AddKey(token, publickey string) (AddKeyResult, Server, error)
 }
 
 type Region string
@@ -204,9 +204,12 @@ func (p *PIAClient) GetAvailableRegions() (map[Region]string, error) {
 }
 
 // AddKey
-func (p *PIAClient) AddKey(token, publickey string) (AddKeyResult, error) {
+func (p *PIAClient) AddKey(token, publickey string) (AddKeyResult, Server, error) {
 	var addKeyResp AddKeyResult
-	server := p.getWireguardServerForRegion()
+	server, err := p.getWireguardServerForRegion()
+	if err != nil {
+		return addKeyResp, server, errors.Wrap(err, "error getting CN server list")
+	}
 
 	// Build http request
 	url := fmt.Sprintf("https://%v:1337/addKey?pt=%v&pubkey=%v", server.Cn, url.QueryEscape(token), url.QueryEscape(publickey))
@@ -214,46 +217,46 @@ func (p *PIAClient) AddKey(token, publickey string) (AddKeyResult, error) {
 	// Send request
 	resp, err := p.executePIARequest(server, url)
 	if err != nil {
-		return addKeyResp, errors.Wrap(err, "error executing request")
+		return addKeyResp, server, errors.Wrap(err, "error executing request")
 	}
 
 	// Parse response
 	err = json.NewDecoder(resp.Body).Decode(&addKeyResp)
 	if err != nil {
-		return addKeyResp, errors.Wrap(err, "error decoding add key response")
+		return addKeyResp, server, errors.Wrap(err, "error decoding add key response")
 	}
 
-	return addKeyResp, nil
+	return addKeyResp, server, nil
 }
 
-func (p *PIAClient) getWireguardServerForRegion() Server {
+func (p *PIAClient) getWireguardServerForRegion() (Server, error) {
 	if p.verbose {
 		log.Print("Getting wireguard server for region: ", p.region)
 	}
 	servers := p.wireguardServers[Region(p.region)]
 	if len(servers) == 0 {
-		log.Fatalf("No Wireguard servers available for region: %s", p.region)
+		return Server{}, errors.Errorf("No Wireguard servers available for region: %s", p.region)
 	}
 	if p.serverCn != "" {
 		for _, s := range servers {
 			if s.Cn == p.serverCn {
-				return s
+				return s, nil
 			}
 		}
 		cns := make([]string, 0, len(servers))
 		for _, s := range servers {
 			cns = append(cns, s.Cn)
 		}
-		log.Fatalf("server CN %q not found in region %s (available: %v)", p.serverCn, p.region, strings.Join(cns, ","))
+		return Server{}, errors.Errorf("server CN %q not found in region %s (available: %v)", p.serverCn, p.region, strings.Join(cns, ","))
 	}
-	return servers[0]
+	return servers[0], nil
 }
 
 // getSeverList returns a list of servers from the PIA API
 func (p *PIAClient) getServerList() (piaServerList, error) {
 	var serverList piaServerList
 
-	resp, err := http.Get("https://serverlist.piaservers.net/vpninfo/servers/v4")
+	resp, err := http.Get("https://serverlist.piaservers.net/vpninfo/servers/v6")
 	if err != nil {
 		return piaServerList{}, err
 	}

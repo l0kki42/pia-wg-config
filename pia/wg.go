@@ -44,14 +44,14 @@ func NewPIAWgGenerator(pia PIAWgClient, config PIAWgGeneratorConfig) *PIAWgGener
 }
 
 // Generate
-func (p *PIAWgGenerator) Generate() (string, error) {
+func (p *PIAWgGenerator) Generate() (string, Server, error) {
 	// Get PIA token
 	if p.verbose {
 		log.Println("Getting PIA token")
 	}
 	token, err := p.pia.GetToken()
 	if err != nil {
-		return "", errors.Wrap(err, "error getting PIA token")
+		return "", Server{}, errors.Wrap(err, "error getting PIA token")
 	}
 
 	// Generate Wireguard keys
@@ -60,16 +60,16 @@ func (p *PIAWgGenerator) Generate() (string, error) {
 	}
 	privatekey, publickey, err := p.generateKeys()
 	if err != nil {
-		return "", errors.Wrap(err, "error generating Wireguard keys")
+		return "", Server{}, errors.Wrap(err, "error generating Wireguard keys")
 	}
 
 	// Add Wireguard publickey to PIA account
 	if p.verbose {
 		log.Println("Adding Wireguard publickey to PIA account")
 	}
-	key, err := p.pia.AddKey(token, publickey)
+	key, server, err := p.pia.AddKey(token, publickey)
 	if err != nil {
-		return "", errors.Wrap(err, "error adding Wireguard publickey to PIA account")
+		return "", server, errors.Wrap(err, "error adding Wireguard publickey to PIA account")
 	}
 	if p.verbose {
 		log.Printf("Server IP:   %s", key.ServerIP)
@@ -85,10 +85,10 @@ func (p *PIAWgGenerator) Generate() (string, error) {
 	}
 	config, err := p.generateConfig(key, privatekey)
 	if err != nil {
-		return "", errors.Wrap(err, "error generating Wireguard config")
+		return "", server, errors.Wrap(err, "error generating Wireguard config")
 	}
 
-	return config, nil
+	return config, server, nil
 }
 
 // generateKeys
